@@ -10,6 +10,10 @@ in separate modules.
 The aim of this project is to develop AI algorithms and (eventually) ouperform
 humans.
 
+## Dependecies ##
+
+You must have SDL (1.2) and SDL_gfx.
+
 ## Game physics ##
 
 There are two collision models implemented by the game module 'cslime.c'. The
