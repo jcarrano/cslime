@@ -1,0 +1,22 @@
+## CSlime ##
+
+This is a clone of the (once) popular game 'slime voleyball', see:
+	http://www.slimeathlete.com/game.php?game=slime_volleyball_multi).
+The original source (in Java) is available at 
+	http://www.maths.tcd.ie/~horkana/work/slime.html
+This version was done from scratch and is (hopefully) cleaner, more modular and
+easily extensible/modifiable. In particular, the back-end and the graphics are
+in separate modules.
+The aim of this project is to develop AI algorithms and (eventually) ouperform
+humans.
+
+## Game physics ##
+
+There are two collision models implemented by the game module 'cslime.c'. The
+first (oblique_collision) is a more realistic model. The second is borrowed from
+the original game (original_collision). Currently the collision between the ball
+and the player uses the second model, as this makes for a nicer gameplay.
+
+## Documentation ##
+
+At the moment, the code is pretty much undocumented, sorry for that.
