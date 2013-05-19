@@ -1,0 +1,39 @@
+# Project: cslime
+# Makefile created by Dev-C++ 4.9.9.2
+
+CPP  = g++.exe
+CC   = gcc.exe
+WINDRES = windres.exe
+RES  = 
+OBJ  = cslime.o cslime_ui.o vector.o cslime_ai.o $(RES)
+LINKOBJ  = cslime.o cslime_ui.o vector.o cslime_ai.o $(RES)
+LIBS =  -L"C:/Dev-Cpp/lib" -L"C:/Dev-Cpp/lib" -L"C:/Dev-Cpp/bin" -lmingw32 -lSDLmain -lSDL -lSDL_gfx  
+INCS =  -I"C:/Dev-Cpp/include" 
+CXXINCS =  -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include"  -I"C:/Dev-Cpp/include/c++/3.4.2/backward"  -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32"  -I"C:/Dev-Cpp/include/c++/3.4.2"  -I"C:/Dev-Cpp/include" 
+BIN  = cslime.exe
+CXXFLAGS = $(CXXINCS)  
+CFLAGS = $(INCS) -pedantic -Wall  
+RM = rm -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before cslime.exe all-after
+
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o "cslime.exe" $(LIBS)
+
+cslime.o: cslime.c
+	$(CC) -c cslime.c -o cslime.o $(CFLAGS)
+
+cslime_ui.o: cslime_ui.c
+	$(CC) -c cslime_ui.c -o cslime_ui.o $(CFLAGS)
+
+vector.o: vector.c
+	$(CC) -c vector.c -o vector.o $(CFLAGS)
+
+cslime_ai.o: cslime_ai.c
+	$(CC) -c cslime_ai.c -o cslime_ai.o $(CFLAGS)
