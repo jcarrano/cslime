@@ -1,0 +1,17 @@
+syntax: glob
+*~
+*.pyc
+*.o
+*.gch
+a.out
+*.pfd
+*.elf
+*.test
+*.pdf
+*.exe
+*.dll
+*.zip
+cslime_win32/
+
+syntax: regexp
+.*\#.*\#$
