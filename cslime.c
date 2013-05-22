@@ -50,9 +50,11 @@ static const struct ball def_ball = {
 			}
 };
 
-static const struct r_vector Default_p0_pos = {PLAYER_AREA_W / 2 ,
-						GAME_AREA_H - AVATAR_H*2};
-static const struct r_vector Default_p1_pos = {PLAYER_AREA_W / 2 + AREA2_STARTX,
+static const struct r_vector Default_p0_pos = {
+       	     	    PLAYER_AREA_W * START_POS_RATIO - AVATAR_W/2,
+					    GAME_AREA_H - AVATAR_H*2};
+static const struct r_vector Default_p1_pos = {
+       	            PLAYER_AREA_W * (1 - START_POS_RATIO) + AREA2_STARTX - AVATAR_W/2,
 						GAME_AREA_H - AVATAR_H*2};
 
 
@@ -157,20 +159,30 @@ static struct kinetic oblique_collision(
 }
 
 static struct kinetic original_collision(
-		struct free_body b, struct kinetic proposed, struct r_vector extra_vel,
-		struct r_vector normal, float bouncicity)
+		struct free_body b, struct kinetic proposed, struct free_body p,
+		float bouncicity)
 {
-	struct kinetic new_k;
+ 	struct kinetic new_k;
+	struct r_vector p_center = r_sum(p.pos, r_make(p.box.x/2, p.box.y));
+	struct r_vector b_center = r_sum(proposed.pos,r_make(b.box.x/2, b.box.y/2));
+	struct r_vector delta_p = r_subs(b_center, p_center);
 
-	if (r_dot(normal, r_subs(proposed.vel, extra_vel)) < 0) {
-		struct r_vector delta_v = r_subs(proposed.vel, extra_vel);
-		float bounce_coeff = (delta_v.x * normal.x * BOUNCICITY_X
-				+ delta_v.y * normal.y);
-		new_k.pos = r_sum(proposed.pos, r_scale(normal, b.box.y/10));
+        float dist = r_abs(delta_p);
+	/*if (r_dot(delta_p, r_subs(proposed.vel, p.vel)) < 0) {*/
+	if (dist < (p.box.x + b.box.y/2) && delta_p.y < 0) {
+		struct r_vector delta_v = r_subs(proposed.vel, p.vel);
+		float bounce_coeff;
+                bounce_coeff = (delta_v.x * delta_p.x * BOUNCICITY_X
+				+ delta_v.y * delta_p.y)/dist;
+		new_k.pos = r_sum(p_center, r_scale(delta_p,
+	 		    		 (p.box.x/2 + b.box.y/2)/dist));
+		new_k.pos = r_subs(new_k.pos, r_make(b.box.x/2, b.box.y/2));
 		new_k.vel = proposed.vel;
 		if (bounce_coeff <= 0) {
-			new_k.vel = r_subs(r_sum(new_k.vel, extra_vel),
-					r_scale(normal, bouncicity*bounce_coeff));
+			struct r_vector delta_p2 = delta_p;
+			delta_p2.x *= BOUNCICITY_X;
+ 			new_k.vel = r_subs(r_sum(new_k.vel, p.vel),
+				r_scale(delta_p2, bouncicity*bounce_coeff/dist));
 			new_k.vel = r_absclip(new_k.vel, vlimitx, vlimity);
 		}
 	} else {
@@ -325,19 +337,20 @@ static struct kinetic ball_player_collision(struct ball b, struct kinetic k, str
 	if (incidence.value <= min_dist && incidence.titha <= 0
 						&& incidence.titha >= -M_PI) {
 		/* lets reflect the V vector on the axis given by the normal */
-		struct r_vector normal = p_to_r(p_make(1, incidence.titha));
+		/*struct r_vector normal = p_to_r(p_make(1, incidence.titha));*/
 		/*new_k = oblique_collision(b.body, k, p.body.vel, normal,
 						CONSERVATION, TRANSMISSION);
 		*/
-		new_k = original_collision(b.body, k, p.body.vel, normal,
-								BOUNCICITY);
+                /*NADA*/
+        	new_k = original_collision(b.body, k, p.body, BOUNCICITY);
 	} else if (
 		fabsf(b_center.y - (p.body.pos.y + p.body.box.y)) <  b.body.box.y/2
 		&& b_center.x > p.body.pos.x
 		&& b_center.x < p.body.pos.x + p.body.box.x
 		) {
-		new_k = oblique_collision(b.body, k, p.body.vel, r_make(0, 1),
-						CONSERVATION, TRANSMISSION_DOWN);
+		/*new_k = oblique_collision(b.body, k, p.body.vel, r_make(0, 1),
+						CONSERVATION, TRANSMISSION_DOWN); */
+	     new_k = original_collision(b.body, k, p.body, BOUNCICITY);
 	} else{
 		struct kinetic edge;
 		struct limit edgeangles;
