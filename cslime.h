@@ -28,7 +28,9 @@
 #include "common.h"
 #include "vector.h"
 
+#define SIMSTEP 10
 #define OVERSAMPLING 16
+#define SAMPLE_FACTOR ((OVERSAMPLING*10.0)/SIMSTEP)
 
 #define GAME_AREA_H .3
 #define PLAYER_AREA_W .363
@@ -42,22 +44,22 @@
 #define AVATAR_MASS 1
 #define BALL_MASS 1
 /*#define BALL_R .00875*/
-#define BALL_R .012
+#define BALL_R .0104
+#define START_POS_RATIO 0.3925
 
 #define START_BALL_Y .1
 
-#define BALL_G (.00013/(OVERSAMPLING*OVERSAMPLING))
-static const struct limit vlimitx = {(.000/OVERSAMPLING), (.006/OVERSAMPLING)};
-static const struct limit vlimity = {(.000/OVERSAMPLING), (.005/OVERSAMPLING)};
+#define BALL_G (.00013/(SAMPLE_FACTOR*SAMPLE_FACTOR))
+static const struct limit vlimitx = {(.000/SAMPLE_FACTOR), (.0065/SAMPLE_FACTOR)};
+static const struct limit vlimity = {(.000/SAMPLE_FACTOR), (.00515/SAMPLE_FACTOR)};
 #define VISCOUS_DRAG (60)
-#define PLAYER_G (.0002/(OVERSAMPLING*OVERSAMPLING))
-#define AVATAR_G (BALL_G*1.02)
-#define AVATAR_VY (.006/OVERSAMPLING)
-#define AVATAR_VX (.003/OVERSAMPLING)
-#define AVATAR_AX (.0002/(OVERSAMPLING*OVERSAMPLING))
+#define PLAYER_G (BALL_G*2)
+#define AVATAR_VY (.006/SAMPLE_FACTOR)
+#define AVATAR_VX (((PLAYER_AREA_W)*0.01)/SAMPLE_FACTOR)
+#define AVATAR_AX (.0002/(SAMPLE_FACTOR*SAMPLE_FACTOR))
 #define FIRE_SPEEDUP 2
-#define BOUNCICITY 3
-#define BOUNCICITY_X .8
+#define BOUNCICITY 2
+#define BOUNCICITY_X 2
 #define FLOOR_HIT_TOL (GAME_AREA_H/200)
 
 #define N_PLAYERS 2

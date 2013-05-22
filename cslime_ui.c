@@ -36,10 +36,10 @@
 #define DEFAULT_SCALE 1500
 #define MIN_SCALE 150
 
-#define POINT_RADIUS (GAME_AREA_H/10)
+#define POINT_RADIUS (GAME_AREA_H/30)
 #define POINT_BORDER (POINT_RADIUS/6)
-#define POINT_SPACING (POINT_RADIUS/10)
-#define POINTS_Y (POINT_RADIUS*1.3)
+#define POINT_SPACING ((POINT_RADIUS + POINT_BORDER)*1.20)
+#define POINTS_Y (POINT_RADIUS*4)
 #define POINTS_LEFT_X (POINTS_Y)
 #define POINTS_RIGHT_X (GAME_AREA_W-POINTS_LEFT_X)
 #define AUX_AREA_H .03
@@ -182,7 +182,7 @@ void draw_game(struct game g, struct uidata *ui)
 	Uint32 overcolor;
 	SDL_Surface *alpha;
 
-	SDL_FillRect(ui->surf, NULL, SDL_MapRGB(ui->surf->format, 40, 40, 100));
+	SDL_FillRect(ui->surf, NULL, SDL_MapRGB(ui->surf->format, 40, 40, 180));
 	/*boxRGBA(ui->surf, 0, 0, ui->surf->w, ui->surf->h, 40, 40, 40, 100);*/
 
 	net.x = _TO_PIX(PLAYER_AREA_W);
@@ -209,7 +209,7 @@ void draw_game(struct game g, struct uidata *ui)
 			200, 200, 200, 255);
 	}
 	drawPoints(ui, POINTS_LEFT_X, POINTS_Y, POINTS_LR, g.p[0].points,
-				rgb(200, 200, 200), rgb(20, 100, 200), 100);
+				rgb(200, 200, 200), rgb(20, 200, 200), 100);
 	drawPoints(ui, POINTS_RIGHT_X, POINTS_Y, POINTS_RL, g.p[1].points,
 				rgb(200, 200, 200), rgb(200, 100, 20), 100);
 
@@ -319,7 +319,8 @@ void wait_unpause()
 	}
 }
 
-#define FRAMERATE 10
+#define FRAMERATE SIMSTEP
+#define SET_INTERVAL (1*1000)
 
 #define SDL_VFLAGS (SDL_SWSURFACE|SDL_DOUBLEBUF|SDL_RESIZABLE|SDL_SRCALPHA)
 
@@ -375,15 +376,17 @@ int main(int argc, char **argv)
 	{
 		struct game g = game_init(DEF_START_POINTS, rand()%2);
 		int t0 = SDL_GetTicks();
-		int p0_manual = 0;
+		int p0_manual = 1, p1_manual = 1;
 
 		while (1) {
 			struct input inp;
 			int new_sleep, t1, i;
 
 			inp = poll_input();
-			if (inp.comm.aux)
+			if (inp.comm.player[0].aux)
 				p0_manual = !p0_manual;
+			if (inp.comm.player[1].aux)
+				p1_manual = !p1_manual;
 			if (inp.quit)
 				break;
 
@@ -395,7 +398,8 @@ int main(int argc, char **argv)
 				if (inp.comm.player[i].d)
 					ui.avatars[i] = Avatars[rand()%N_AVATARS];
 			}
-			inp.comm.player[1] = greedy_player(g , 1, 1);
+			if (!p1_manual)
+				inp.comm.player[1] = greedy_player(g , 1, 1);
 			if (!p0_manual)
 				inp.comm.player[0] = greedy_player(g , 0, 1);
 			ui.gr = run_game(&g, inp.comm);
@@ -408,7 +412,10 @@ int main(int argc, char **argv)
 			if (new_sleep > 0)
 				SDL_Delay(new_sleep);
 
-			if (inp.pause || ui.gr.game_end || ui.gr.set_end) {
+                        if(ui.gr.game_end || ui.gr.set_end) {
+                                SDL_Delay(SET_INTERVAL);
+			}
+			if (inp.pause) {
 				wait_unpause();
 				t0 = SDL_GetTicks();
 			} else {
