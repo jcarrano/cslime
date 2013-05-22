@@ -14,6 +14,21 @@ humans.
 
 You must have SDL (1.2) and SDL_gfx.
 
+## Game play ##
+
+Press 'p' to pause/unpause
+Press ESC or 'q' to exit 
+
+# Player 1
+Control the slime with
+ w
+asd
+Press left shift to switch betwteen manual and automatic.
+
+# Player 2:
+Control the slime with arrows
+Press the keypad's 'enter' to switch betwteen manual and automatic.
+
 ## Game physics ##
 
 There are two collision models implemented by the game module 'cslime.c'. The
