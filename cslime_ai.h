@@ -25,8 +25,18 @@
 #ifndef __CSLIME_AI_H__
 #define __CSLIME_AI_H__
 
+#include <stdio.h>
 #include "cslime.h"
+#include "nn.h"
 
 struct pcontrol greedy_player(struct game g, int player_number, bool aggressive);
+
+/* neural player */
+typedef struct MLP NeuralData;
+NeuralData neural_bp_player_fread(FILE *f);
+#define neural_bp_player_valid_data(d) (MLP_valid(d))
+#define neural_bp_player_destroy_data(d) (MLP_destroy(d))
+struct pcontrol neural_bp_player(struct game g, int player_number,
+							NeuralData);
 
 #endif /*__CSLIME_AI_H__*/

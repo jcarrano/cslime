@@ -361,6 +361,9 @@ void ui_uninit(struct uidata *ui)
 	SDL_FreeSurface(ui->surf);
 }
 
+enum {NEURAL_PLAYER, GREEDY_PLAYER};
+#define NEURAL_CFG_FILE "player.net"
+
 int main(int argc, char **argv)
 {
 	struct uidata ui;
@@ -377,6 +380,21 @@ int main(int argc, char **argv)
 		struct game g = game_init(DEF_START_POINTS, rand()%2);
 		int t0 = SDL_GetTicks();
 		int p0_manual = 1, p1_manual = 1;
+		int player_type;
+		NeuralData brain;
+		FILE *cfg;
+
+		if ((cfg = fopen(NEURAL_CFG_FILE, "r")) != NULL
+		    && neural_bp_player_valid_data(
+				brain = neural_bp_player_fread(cfg)
+			)) {
+			player_type = NEURAL_PLAYER;
+			fprintf(stderr, "Loaded neural network player\n");
+		} else {
+			player_type = GREEDY_PLAYER;
+			fprintf(stderr,
+"Oops, problem neural network player, will revert to greedy player\n");
+		}
 
 		while (1) {
 			struct input inp;
@@ -398,8 +416,13 @@ int main(int argc, char **argv)
 				if (inp.comm.player[i].d)
 					ui.avatars[i] = Avatars[rand()%N_AVATARS];
 			}
-			if (!p1_manual)
-				inp.comm.player[1] = greedy_player(g , 1, 1);
+			if (!p1_manual) {
+				if (player_type == NEURAL_PLAYER)
+					inp.comm.player[1] =
+						neural_bp_player(g , 1, brain);
+				else
+					inp.comm.player[1] = greedy_player(g , 1, 1);
+			}
 			if (!p0_manual)
 				inp.comm.player[0] = greedy_player(g , 0, 1);
 			ui.gr = run_game(&g, inp.comm);
@@ -426,6 +449,9 @@ int main(int argc, char **argv)
 			else if (ui.gr.set_end)
 				game_reset(&g, ui.gr.has_to_start);
 		}
+
+		if (player_type == NEURAL_PLAYER)
+			neural_bp_player_destroy_data(brain);
 	}
 
 

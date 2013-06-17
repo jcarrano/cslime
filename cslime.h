@@ -39,7 +39,7 @@
 #define NET_H .038
 #define AREA2_STARTX (PLAYER_AREA_W + NET_W)
 #define GAME_AREA_W (2*PLAYER_AREA_W + NET_W)
-#define AVATAR_H .035 //.036
+#define AVATAR_H .035 /*.036*/
 #define AVATAR_W (AVATAR_H*2)
 #define AVATAR_MASS 1
 #define BALL_MASS 1
