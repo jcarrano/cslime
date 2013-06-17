@@ -147,8 +147,9 @@ struct MLP neural_bp_player_fread(FILE *f)
 	return r;
 }
 
-#define BP_MOVE_LEFT (-1)
-#define BP_MOVE_RIGHT (-BP_MOVE_LEFT)
+#define BP_LOGIC_LEVEL (.8)
+#define BP_MOVE_RIGHT BP_LOGIC_LEVEL
+#define BP_MOVE_LEFT (-BP_MOVE_RIGHT)
 #define BP_NO_MOVE 0
 
 static void _bp_player_load_inputs(struct game g, int player_number,
@@ -165,10 +166,10 @@ static void _bp_player_load_inputs(struct game g, int player_number,
 static void _bp_player_load_outputs(struct pcontrol ctlr,
 						numeric outputs[BP_N_OUTPUTS])
 {
-	int moving = ctlr.l != ctlr.r;
-	int dir = moving? (ctlr.l? BP_MOVE_LEFT : BP_MOVE_RIGHT) : BP_NO_MOVE;
-	outputs[BP_OUTPUT_DIRECTION] = dir;
-	outputs[BP_OUTPUT_JUMP] = ctlr.u? 1: -1;
+	int moving = (ctlr.l != ctlr.r);
+	outputs[BP_OUTPUT_DIRECTION] = moving?
+			(ctlr.r? BP_MOVE_RIGHT : BP_MOVE_LEFT) : BP_NO_MOVE;
+	outputs[BP_OUTPUT_JUMP] = ctlr.u? BP_LOGIC_LEVEL: -BP_LOGIC_LEVEL;
 }
 
 static struct pcontrol _bp_player_read_outputs(numeric outputs[BP_N_OUTPUTS])
@@ -177,9 +178,16 @@ static struct pcontrol _bp_player_read_outputs(numeric outputs[BP_N_OUTPUTS])
 
 	r.aux = 0;
 	r.d = 0;
-	r.u = (outputs[BP_OUTPUT_JUMP] > 0);
-	r.l = (outputs[BP_OUTPUT_DIRECTION]*BP_MOVE_LEFT > 0);
-	r.r = !r.l;
+	r.u = (outputs[BP_OUTPUT_JUMP] > 0.0f);
+
+	/* This should be ">" instead of "<", but it doesn't work */
+	if (outputs[BP_OUTPUT_DIRECTION] < 0.0f) {
+		r.r = 1;
+		r.l = 0;
+	} else {
+		r.l = 1;
+		r.r = 0;
+	}
 
 	return r;
 }
