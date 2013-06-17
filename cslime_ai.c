@@ -216,8 +216,7 @@ void bp_player_train_step(struct game g, int player_number,
 #define MU .002
 
 static bool running = 1;
-static const int bp_topology[] = {BP_N_INPUTS, 15, 10,
-							BP_N_OUTPUTS};
+static const int bp_topology[] = {BP_N_INPUTS, 12, BP_N_OUTPUTS};
 
 static void _stop_training(int s)
 {
