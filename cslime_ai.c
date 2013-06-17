@@ -26,6 +26,11 @@
 #include <stdio.h>
 #include "cslime_ai.h"
 #include "vector.h"
+#include "nn.c"
+
+/* Greedy player : tries to make the best move using only current information.
+ * 		Some randomness is required to serve and to avoid infinite loops.
+ */
 
 static float kinematic_solve_t(float x0, float x1, float v0, float acc)
 {
@@ -112,3 +117,123 @@ struct pcontrol greedy_player(struct game g, int player_number, bool aggressive)
 
 	return r;
 }
+
+/* Backpropagation neural-network player */
+
+enum {BP_INPUT_PX, BP_INPUT_PY, BP_INPUT_BX, BP_INPUT_BY, BP_INPUT_BVX,
+	BP_INPUT_BVY, BP_N_INPUTS};
+
+enum {BP_OUTPUT_DIRECTION, BP_OUTPUT_JUMP, BP_N_OUTPUTS};
+
+#define BP_MOVE_LEFT (-1)
+#define BP_MOVE_RIGHT (-BP_MOVE_LEFT)
+#define BP_NO_MOVE 0
+
+static void _bp_player_load_inputs(struct game g, int player_number,
+						numeric inputs[BP_N_INPUTS])
+{
+	inputs[BP_INPUT_PX] = g.p[player_number].pos.x;
+	inputs[BP_INPUT_PY] = g.p[player_number].pos.y;
+	inputs[BP_INPUT_BX] = g.b.body.pos.x;
+	inputs[BP_INPUT_BY] = g.b.body.pos.y;
+	inputs[BP_INPUT_BVX] = g.b.body.pos.x;
+	inputs[BP_INPUT_BVY] = g.b.body.pos.y;
+}
+
+static void _bp_player_load_outputs(struct pcontrol ctlr,
+						numeric outputs[BP_N_OUTPUTS])
+{
+	int moving = ctlr.l != ctlr.r;
+	int dir = moving? (ctlr.l? BP_MOVE_LEFT : BP_MOVE_RIGHT) : BP_NO_MOVE;
+	outputs[BP_OUTPUT_DIRECTION] = dir;
+	outputs[BP_OUTPUT_JUMP] = ctlr.up? 1; -1;
+}
+
+static struct pcontrol _bp_player_read_outputs(numeric outputs[BP_N_OUTPUTS])
+{
+	struct pcontrol r;
+
+	r.aux = 0;
+	r.d = 0;
+	r.u = (outputs[BP_OUTPUT_JUMP] > 0);
+	r.l = (outputs[BP_OUTPUT_DIRECTION]*BP_MOVE_LEFT > 0);
+	r.r = !r.l;
+
+	return r;
+}
+
+struct pcontrol neural_bp_player(struct game g, int player_number,
+							struct MLP brain)
+{
+	numeric inputs[BP_N_INPUTS];
+	numeric outputs[BP_N_INPUTS];
+
+	_bp_player_load_inputs(g, player_number, inputs);
+	MLP_eval(brain, A_TO_VMATRIX(inputs), A_TO_VMATRIX(outputs)
+
+	return _bp_player_read_outputs(outputs);
+}
+
+void bp_player_train_step(struct game g, int player_number,
+			struct pcontrol ctrl_out, numeric mu, struct MLP brain,
+			struct matrix *train_space)
+{
+	numeric inputs[BP_N_INPUTS];
+	numeric outputs[BP_N_INPUTS];
+
+	MLP_eval_update(brain, A_TO_VMATRIX(inputs), A_TO_VMATRIX(outputs),
+						train_space, mu);
+}
+
+#ifdef AI_TRAIN_NN
+
+#define TRAIN_DECIMATION 16
+
+static bool running = 1;
+static const int bp_topology[] = {BP_N_INPUTS, BP_N_INPUTS*BP_N_OUTPUTS*2,
+							BP_N_OUTPUTS}
+
+static void _stop_training(int s)
+{
+	running = 0;
+}
+
+int main(int argc, char *argv[])
+{
+	struct game g;
+	struct commands comm;
+	struct MLP brain;
+	int updates = 0;
+
+	srand(time(NULL));
+	g  = game_init(DEF_START_POINTS, rand()%2);
+	comm.aux = 0;
+
+	signal(SIGINT, _stop_training)
+
+	fprintf(stderr, "Start training");
+
+	while (running) {
+		struct game_result gr;
+
+		comm.player[1] = greedy_player(g , 1, 1);
+		comm.player[0] = greedy_player(g , 0, 1);
+		if (!(rand() % TRAIN_DECIMATION)) {
+			int pn;
+
+			updates++;
+			pn = rand() % 2;
+			bp_player_train_step(struct game g, int player_number,
+				struct pcontrol ctrl_out, numeric mu, struct MLP brain,
+				struct matrix *train_space)
+		}
+
+		gr = run_game(&g, inp.comm);
+
+		if (gr.game_end)
+			g = game_init(DEF_START_POINTS, rand()%2);
+		else if (gr.set_end)
+			game_reset(&g, gr.has_to_start);
+	}
+}
+#endif /*AI_TRAIN_NN*/
