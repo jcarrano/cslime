@@ -393,7 +393,7 @@ int main(int argc, char **argv)
 		} else {
 			player_type = GREEDY_PLAYER;
 			fprintf(stderr,
-"Oops, problem neural network player, will revert to greedy player\n");
+"Oops, problem with neural network player, will revert to greedy player\n");
 		}
 
 		while (1) {
