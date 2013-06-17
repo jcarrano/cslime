@@ -23,10 +23,17 @@
  */
 
 #include <math.h>
+
+#ifdef AI_TRAIN_NN
 #include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <time.h>
+#endif
+
 #include "cslime_ai.h"
 #include "vector.h"
-#include "nn.c"
+#include "nn.h"
 
 /* Greedy player : tries to make the best move using only current information.
  * 		Some randomness is required to serve and to avoid infinite loops.
@@ -125,6 +132,21 @@ enum {BP_INPUT_PX, BP_INPUT_PY, BP_INPUT_BX, BP_INPUT_BY, BP_INPUT_BVX,
 
 enum {BP_OUTPUT_DIRECTION, BP_OUTPUT_JUMP, BP_N_OUTPUTS};
 
+struct MLP neural_bp_player_fread(FILE *f)
+{
+	struct MLP r;
+	r = MLP_fread(f);
+	if (MLP_valid(r)) {
+		if (MLP_n_inputs(r) != BP_N_INPUTS
+		   || MLP_n_outputs(r) != BP_N_OUTPUTS) {
+			MLP_destroy(r);
+			MLP_mark_invalid(r);
+		   }
+	}
+
+	return r;
+}
+
 #define BP_MOVE_LEFT (-1)
 #define BP_MOVE_RIGHT (-BP_MOVE_LEFT)
 #define BP_NO_MOVE 0
@@ -132,8 +154,8 @@ enum {BP_OUTPUT_DIRECTION, BP_OUTPUT_JUMP, BP_N_OUTPUTS};
 static void _bp_player_load_inputs(struct game g, int player_number,
 						numeric inputs[BP_N_INPUTS])
 {
-	inputs[BP_INPUT_PX] = g.p[player_number].pos.x;
-	inputs[BP_INPUT_PY] = g.p[player_number].pos.y;
+	inputs[BP_INPUT_PX] = g.p[player_number].body.pos.x;
+	inputs[BP_INPUT_PY] = g.p[player_number].body.pos.y;
 	inputs[BP_INPUT_BX] = g.b.body.pos.x;
 	inputs[BP_INPUT_BY] = g.b.body.pos.y;
 	inputs[BP_INPUT_BVX] = g.b.body.pos.x;
@@ -146,7 +168,7 @@ static void _bp_player_load_outputs(struct pcontrol ctlr,
 	int moving = ctlr.l != ctlr.r;
 	int dir = moving? (ctlr.l? BP_MOVE_LEFT : BP_MOVE_RIGHT) : BP_NO_MOVE;
 	outputs[BP_OUTPUT_DIRECTION] = dir;
-	outputs[BP_OUTPUT_JUMP] = ctlr.up? 1; -1;
+	outputs[BP_OUTPUT_JUMP] = ctlr.u? 1: -1;
 }
 
 static struct pcontrol _bp_player_read_outputs(numeric outputs[BP_N_OUTPUTS])
@@ -166,20 +188,23 @@ struct pcontrol neural_bp_player(struct game g, int player_number,
 							struct MLP brain)
 {
 	numeric inputs[BP_N_INPUTS];
-	numeric outputs[BP_N_INPUTS];
+	numeric outputs[BP_N_OUTPUTS];
 
 	_bp_player_load_inputs(g, player_number, inputs);
-	MLP_eval(brain, A_TO_VMATRIX(inputs), A_TO_VMATRIX(outputs)
+	MLP_eval(brain, A_TO_VMATRIX(inputs), A_TO_VMATRIX(outputs));
 
 	return _bp_player_read_outputs(outputs);
 }
 
 void bp_player_train_step(struct game g, int player_number,
 			struct pcontrol ctrl_out, numeric mu, struct MLP brain,
-			struct matrix *train_space)
+			MLPTrainSpace train_space)
 {
 	numeric inputs[BP_N_INPUTS];
-	numeric outputs[BP_N_INPUTS];
+	numeric outputs[BP_N_OUTPUTS];
+
+	_bp_player_load_inputs(g, player_number, inputs);
+	_bp_player_load_outputs(ctrl_out, outputs);
 
 	MLP_eval_update(brain, A_TO_VMATRIX(inputs), A_TO_VMATRIX(outputs),
 						train_space, mu);
@@ -188,10 +213,11 @@ void bp_player_train_step(struct game g, int player_number,
 #ifdef AI_TRAIN_NN
 
 #define TRAIN_DECIMATION 16
+#define MU .0001
 
 static bool running = 1;
 static const int bp_topology[] = {BP_N_INPUTS, BP_N_INPUTS*BP_N_OUTPUTS*2,
-							BP_N_OUTPUTS}
+							BP_N_OUTPUTS};
 
 static void _stop_training(int s)
 {
@@ -203,15 +229,26 @@ int main(int argc, char *argv[])
 	struct game g;
 	struct commands comm;
 	struct MLP brain;
-	int updates = 0;
+	MLPTrainSpace ts;
+	int updates = 0, code = 0;
 
 	srand(time(NULL));
 	g  = game_init(DEF_START_POINTS, rand()%2);
 	comm.aux = 0;
 
-	signal(SIGINT, _stop_training)
+	signal(SIGINT, _stop_training);
 
-	fprintf(stderr, "Start training");
+	brain = MLP_create(bp_topology, ARSIZE(bp_topology), &code);
+	if (code < 0)
+		goto ai_train_fail_brain;
+
+	ts = MLP_create_train_space(brain);
+	if (!MLP_ts_valid(ts)) {
+		code = -E_NOMEM;
+		goto ai_train_fail_ts;
+	}
+
+	fprintf(stderr, "Start training\n");
 
 	while (running) {
 		struct game_result gr;
@@ -223,17 +260,34 @@ int main(int argc, char *argv[])
 
 			updates++;
 			pn = rand() % 2;
-			bp_player_train_step(struct game g, int player_number,
-				struct pcontrol ctrl_out, numeric mu, struct MLP brain,
-				struct matrix *train_space)
+			bp_player_train_step(g, pn, comm.player[pn], MU, brain,
+									ts);
 		}
 
-		gr = run_game(&g, inp.comm);
+		gr = run_game(&g, comm);
 
 		if (gr.game_end)
 			g = game_init(DEF_START_POINTS, rand()%2);
 		else if (gr.set_end)
 			game_reset(&g, gr.has_to_start);
 	}
+
+	fprintf(stderr, "Stopped training\n");
+
+	{
+		int k;
+		k = MLP_fwrite(brain, stdout);
+		fprintf(stderr, "wrote %d bytes\n", k);
+	}
+
+	MLP_destroy_train_space(brain, ts);
+ai_train_fail_ts:
+	MLP_destroy(brain);
+
+ai_train_fail_brain:
+	if (code < 0)
+		fprintf(stderr, "fatal error\n");
+
+	return -code;
 }
 #endif /*AI_TRAIN_NN*/

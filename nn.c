@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <math.h>
 #include "common.h"
 
 #ifdef NN_DEBUG
@@ -125,18 +126,24 @@ void MLPLayer_backpropagate(struct MLPLayer *l, numeric mu, struct matrix v_in,
 
 inline int MLP_n_outputs(struct MLP mlp)
 {
-	return MLPLayer_n_inputs(mlp.layers[mlp.n_layers - 1]);
+	return MLPLayer_n_neurons(mlp.layers[mlp.n_layers - 1]);
+}
+
+void _destroy_layers(struct MLPLayer *layers, int n_layers)
+{
+	int i;
+
+	if (layers != NULL) {
+		for (i = 0; i < n_layers; i++)
+			MLPLayer_destroy(layers[i]);
+		free(layers);
+	}
 }
 
 void MLP_destroy(struct MLP mlp)
 {
-	int i;
+	_destroy_layers(mlp.layers, mlp.n_layers);
 
-	for (i = 0; i < mlp.n_layers; i++) {
-		MLPLayer_destroy(mlp.layers[i]);
-	}
-
-	free(mlp.layers);
 	free(mlp.work_area_even);
 	free(mlp.work_area_odd);
 }
@@ -189,6 +196,8 @@ MLP_create_from_layers_end:
 	if (_ret_code < 0) {
 		free(r.work_area_even);
 		free(r.work_area_odd);
+		r.work_area_even = NULL;
+		r.work_area_odd = NULL;
 	}
 
 	if (ret_code != NULL)
@@ -200,63 +209,105 @@ MLP_create_from_layers_end:
 struct MLP MLP_create(const int *layer_sizes, int layer_sizes_n, int *ret_code)
 {
 	struct MLP r;
-	int i, max_wa_even_size = 0, max_wa_odd_size = 0;
+	struct MLPLayer *layers;
+	int n_layers, _ret_code = -E_OK;
 
-	if (ret_code != NULL)
-		*ret_code = -E_NOMEM;
+	n_layers = layer_sizes_n - 1;
 
-	r.n_layers = layer_sizes_n - 1;
-	r.layers = NULL;
-	r.work_area_even = NULL;
-	r.work_area_odd = NULL;
-
-	for (i = 0; i < r.n_layers; i += 2)
-		if (layer_sizes[i+1] > max_wa_even_size)
-			max_wa_even_size = layer_sizes[i+1];
-
-	for (i = 1; i < r.n_layers; i += 2)
-		if (layer_sizes[i+1] > max_wa_odd_size)
-			max_wa_odd_size = layer_sizes[i+1];
-
-	if (NMALLOC(r.layers, r.n_layers)
-	    && NMALLOC(r.work_area_even, max_wa_even_size)
-	    && NMALLOC(r.work_area_odd, max_wa_odd_size)){
+	if (NMALLOC(layers, n_layers) != NULL){
 		int i;
 
-		for (i = 0; i < r.n_layers; i++) {
-			r.layers[i] = MLPLayer_INVALID;
+		for (i = 0; i < n_layers; i++) {
+			layers[i] = MLPLayer_INVALID;
 		}
 
-		for (i = 0; i < r.n_layers; i++) {
+		for (i = 0; i < n_layers; i++) {
 			int l_status;
 
-			r.layers[i] = MLPLayer_create(layer_sizes[i+1],
-					layer_sizes[i], &l_status);
+			layers[i] = MLPLayer_create(layer_sizes[i+1],
+						layer_sizes[i], &l_status);
 
 			if (l_status < 0) {
-				if (ret_code != NULL)
-					*ret_code = l_status;
-				goto MLP_create_failure;
+				_ret_code = l_status;
+				goto MLP_create_end;
 			}
-			MLPLayer_randFill(r.layers[i]);
+			MLPLayer_randFill(layers[i]);
 		}
 	} else {
-		if (ret_code != NULL)
-			*ret_code = -E_NOMEM;
+		_ret_code = -E_NOMEM;
 	}
 
-	r.work_area_larger = (max_wa_even_size > max_wa_odd_size)?
-				r.work_area_even : r.work_area_odd;
+MLP_create_end:
 
-	return r;
+	if (_ret_code < 0) {
+		struct MLP _r = {0};
 
-MLP_create_failure:
-	MLP_destroy(r);
+		_destroy_layers(layers, n_layers);
+
+		r = _r;
+	} else {
+		r = MLP_create_from_layers(layers, n_layers, &_ret_code);
+		if (_ret_code < 0)
+			MLP_destroy(r);
+	}
+
+	if (ret_code != NULL)
+		*ret_code = _ret_code;
 
 	return r;
 }
 
-void MLP_destroy_train_space(struct MLP mlp, struct matrix *ts)
+int MLP_fwrite(struct MLP mlp, FILE *f)
+{
+	int count = 0, i;
+
+	count += fprintf(f, NN_LAYERS_TAG" %d\n", mlp.n_layers);
+	for (i = 0; i < mlp.n_layers; i++) {
+		count += MLPLayer_fwrite(mlp.layers[i], f);
+	}
+
+	return count;
+}
+
+struct MLP MLP_fread(FILE *f)
+{
+	struct MLP r;
+	struct MLPLayer *layers;
+	int code = -E_OK, n_layers;
+
+	if (fscanf(f, NN_LAYERS_TAG" %d\n", &n_layers) == 1
+	    && NMALLOC(layers, n_layers) != NULL) {
+		int i;
+
+		for (i = 0; i < n_layers; i++) {
+			layers[i] = MLPLayer_INVALID;
+		}
+
+		for (i = 0; i < n_layers; i++) {
+			if (!MLPLayer_valid(layers[i] = MLPLayer_fread(f))) {
+				code = -E_OTHER;
+				goto MLP_fread_end;
+			}
+		}
+
+		r = MLP_create_from_layers(layers, n_layers, &code);
+	} else {
+		MLP_mark_invalid(r);
+	}
+
+MLP_fread_end:
+	if (code == -E_OTHER) {
+		_destroy_layers(layers, n_layers);
+		MLP_mark_invalid(r);
+	} else if (code < 0) {
+		MLP_destroy(r);
+		MLP_mark_invalid(r);
+	}
+
+	return r;
+}
+
+void MLP_destroy_train_space(struct MLP mlp, MLPTrainSpace ts)
 {
 	int i;
 
@@ -267,9 +318,9 @@ void MLP_destroy_train_space(struct MLP mlp, struct matrix *ts)
 	free(ts);
 }
 
-struct matrix *MLP_create_train_space(struct MLP mlp)
+MLPTrainSpace MLP_create_train_space(struct MLP mlp)
 {
-	struct matrix *r;
+	MLPTrainSpace r;
 
 	if (NMALLOC(r, mlp.n_layers)) {
 		int i;
@@ -316,7 +367,7 @@ void MLP_eval(struct MLP mlp, struct matrix in, struct matrix out)
 }
 
 void MLP_eval_update(struct MLP mlp, struct matrix in, struct matrix out,
-				struct matrix *outputs, numeric mu)
+				MLPTrainSpace outputs, numeric mu)
 {
 	int i;
 	struct matrix layer_input, err;
@@ -373,37 +424,58 @@ int main(int argc, char **argv)
 {
 	int i;
 	struct MLP mlp1;
-	struct matrix *ts;
+	MLPTrainSpace ts;
 
-	mlp1 = MLP_create(layer_sz, ARSIZE(layer_sz), NULL);
-	ts = MLP_create_train_space(mlp1);
-
-	for (i = 0; i < TRAIN_CYCLES; i++) {
-		numeric t = rand_f(tlimit);
-		numeric xy[2];
-		struct matrix in, out;
-
-		xy[0] = .05*(t - sinf(t));
-		xy[1] = .5*(1 - cosf(t)) - 0.5;
-
-		in = a_to_vmatrix(&t, 1);
-		out = a_to_vmatrix(xy, 2);
-
-		MLP_eval_update(mlp1, in, out, ts, MU);
+	if (argc != 2) {
+		fprintf(stderr, "specify r or w\n");
+		return 1;
 	}
 
-	MLP_destroy_train_space(mlp1, ts);
+	switch (argv[1][0]) {
+	case 'w':
+		mlp1 = MLP_create(layer_sz, ARSIZE(layer_sz), NULL);
+		ts = MLP_create_train_space(mlp1);
 
-	for (i = 0; i < N_EVAL; i++) {
-		numeric t = ((tlimit.max - tlimit.min)/N_EVAL)*i + tlimit.min;
-		numeric xy[2];
-		struct matrix in, out;
+		for (i = 0; i < TRAIN_CYCLES; i++) {
+			numeric t = rand_f(tlimit);
+			numeric xy[2];
+			struct matrix in, out;
 
-		in = a_to_vmatrix(&t, 1);
-		out = a_to_vmatrix(xy, 2);
+			xy[0] = .05*(t - sinf(t));
+			xy[1] = .5*(1 - cosf(t)) - 0.5;
 
-		MLP_eval(mlp1, in, out);
-		printf("%g, %g, %g\n", t, xy[0], xy[1]);
+			in = a_to_vmatrix(&t, 1);
+			out = a_to_vmatrix(xy, 2);
+
+			MLP_eval_update(mlp1, in, out, ts, MU);
+		}
+
+		MLP_destroy_train_space(mlp1, ts);
+		fprintf(stderr, "%d bytes written\n", MLP_fwrite(mlp1, stdout));
+		break;
+	case 'r':
+		mlp1 = MLP_fread(stdin);
+		if (!MLP_valid(mlp1)) {
+			fprintf(stderr, "wrong configuration\n");
+			return 3;
+		}
+
+		for (i = 0; i < N_EVAL; i++) {
+			numeric t = ((tlimit.max - tlimit.min)/N_EVAL)*i + tlimit.min;
+			numeric xy[2];
+			struct matrix in, out;
+
+			in = a_to_vmatrix(&t, 1);
+			out = a_to_vmatrix(xy, 2);
+
+			MLP_eval(mlp1, in, out);
+			printf("%g, %g, %g\n", t, xy[0], xy[1]);
+		}
+
+		break;
+	default:
+		fprintf(stderr, "command <<%s>> not understood\n", argv[1]);
+		return 2;
 	}
 
 	MLP_destroy(mlp1);
