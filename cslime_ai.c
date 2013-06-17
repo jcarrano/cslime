@@ -158,8 +158,8 @@ static void _bp_player_load_inputs(struct game g, int player_number,
 	inputs[BP_INPUT_PY] = g.p[player_number].body.pos.y;
 	inputs[BP_INPUT_BX] = g.b.body.pos.x;
 	inputs[BP_INPUT_BY] = g.b.body.pos.y;
-	inputs[BP_INPUT_BVX] = g.b.body.pos.x;
-	inputs[BP_INPUT_BVY] = g.b.body.pos.y;
+	inputs[BP_INPUT_BVX] = g.b.body.vel.x;
+	inputs[BP_INPUT_BVY] = g.b.body.vel.y;
 }
 
 static void _bp_player_load_outputs(struct pcontrol ctlr,
