@@ -212,11 +212,11 @@ void bp_player_train_step(struct game g, int player_number,
 
 #ifdef AI_TRAIN_NN
 
-#define TRAIN_DECIMATION 16
-#define MU .0001
+#define TRAIN_DECIMATION 1
+#define MU .002
 
 static bool running = 1;
-static const int bp_topology[] = {BP_N_INPUTS, BP_N_INPUTS*BP_N_OUTPUTS*2,
+static const int bp_topology[] = {BP_N_INPUTS, 15, 10,
 							BP_N_OUTPUTS};
 
 static void _stop_training(int s)
@@ -259,7 +259,8 @@ int main(int argc, char *argv[])
 			int pn;
 
 			updates++;
-			pn = rand() % 2;
+			pn = 1;
+
 			bp_player_train_step(g, pn, comm.player[pn], MU, brain,
 									ts);
 		}
@@ -272,7 +273,7 @@ int main(int argc, char *argv[])
 			game_reset(&g, gr.has_to_start);
 	}
 
-	fprintf(stderr, "Stopped training\n");
+	fprintf(stderr, "Stopped training: %d updates\n", updates);
 
 	{
 		int k;
