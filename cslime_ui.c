@@ -38,11 +38,11 @@
 
 #define POINT_RADIUS (GAME_AREA_H/30)
 #define POINT_BORDER (POINT_RADIUS/6)
-#define POINT_SPACING ((POINT_RADIUS + POINT_BORDER)*1.20)
+#define POINT_SPACING ((POINT_RADIUS + POINT_BORDER)*1.20f)
 #define POINTS_Y (POINT_RADIUS*4)
 #define POINTS_LEFT_X (POINTS_Y)
 #define POINTS_RIGHT_X (GAME_AREA_W-POINTS_LEFT_X)
-#define AUX_AREA_H .03
+#define AUX_AREA_H .03f
 
 #define TO_PIXELS(x, factor) ((int)roundf((x)*(factor)))
 
@@ -419,9 +419,9 @@ int main(int argc, char **argv)
 			if (!p1_manual) {
 				if (player_type == NEURAL_PLAYER)
 					inp.comm.player[1] =
-						neural_bp_player(g , 1, brain);
+						neural_bp_player(g, 1, brain);
 				else
-					inp.comm.player[1] = greedy_player(g , 1, 1);
+					inp.comm.player[1] = greedy_player(g, 1, 1);
 			}
 			if (!p0_manual)
 				inp.comm.player[0] = greedy_player(g , 0, 1);

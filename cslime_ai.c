@@ -51,8 +51,8 @@ static float kinematic_solve_t(float x0, float x1, float v0, float acc)
 	if (delta >= 0) {
 		float t1, t2;
 
-		t1 = (-b - sqrt(delta)) / (2*a);
-		t2 = (-b + sqrt(delta)) / (2*a);
+		t1 = (-b - sqrtf(delta)) / (2*a);
+		t2 = (-b + sqrtf(delta)) / (2*a);
 
 		return fmaxf(t1, t2);
 	} else {
@@ -62,7 +62,7 @@ static float kinematic_solve_t(float x0, float x1, float v0, float acc)
 
 static float kinematic_solve_x(float x0, float v0, float acc, float delta_t)
 {
-	return x0 + v0*delta_t + 0.5 * acc * delta_t * delta_t;
+	return x0 + v0*delta_t + 0.5f * acc * delta_t * delta_t;
 }
 
 struct pcontrol greedy_player(struct game g, int player_number, bool aggressive)
@@ -111,8 +111,9 @@ struct pcontrol greedy_player(struct game g, int player_number, bool aggressive)
 		    && t_ground > 0
 		    && fmaxf(fabsf(delta_x) - me.body.box.x/2, 0)/t_ground > AVATAR_VX) {
 			r.u = 1;
-		} else if (incidence.value < me.body.box.y*(1.0 + 1.0/3)) {
-			if (incidence.titha < -M_PI_4 && incidence.titha > -3*M_PI_4)
+		} else if (incidence.value < me.body.box.y*(1.0f + 1.0f/3)) {
+			if (incidence.titha < -((float)M_PI_4) && incidence.titha >
+							-3*((float)M_PI_4))
 				r.u = (rand()%8 == 0);
 			if (fabsf(b_center.x - my_center.x) < me.body.box.x/4) {
 				bool a = rand()%2;
@@ -130,7 +131,7 @@ struct pcontrol greedy_player(struct game g, int player_number, bool aggressive)
 enum {BP_INPUT_PX, BP_INPUT_PY, BP_INPUT_BX, BP_INPUT_BY, BP_INPUT_BVX,
 	BP_INPUT_BVY, BP_N_INPUTS};
 
-enum {BP_OUTPUT_DIRECTION, BP_OUTPUT_JUMP, BP_N_OUTPUTS};
+enum {BP_OUTPUT_L, BP_OUTPUT_R, BP_OUTPUT_JUMP, BP_N_OUTPUTS};
 
 struct MLP neural_bp_player_fread(FILE *f)
 {
@@ -147,7 +148,7 @@ struct MLP neural_bp_player_fread(FILE *f)
 	return r;
 }
 
-#define BP_LOGIC_LEVEL (.8)
+#define BP_LOGIC_LEVEL (1)
 #define BP_MOVE_RIGHT BP_LOGIC_LEVEL
 #define BP_MOVE_LEFT (-BP_MOVE_RIGHT)
 #define BP_NO_MOVE 0
@@ -167,8 +168,11 @@ static void _bp_player_load_outputs(struct pcontrol ctlr,
 						numeric outputs[BP_N_OUTPUTS])
 {
 	int moving = (ctlr.l != ctlr.r);
-	outputs[BP_OUTPUT_DIRECTION] = moving?
+	/*outputs[BP_OUTPUT_DIRECTION] = moving?
 			(ctlr.r? BP_MOVE_RIGHT : BP_MOVE_LEFT) : BP_NO_MOVE;
+	*/
+	outputs[BP_OUTPUT_L] = ctlr.l? BP_LOGIC_LEVEL: -BP_LOGIC_LEVEL;
+	outputs[BP_OUTPUT_R] = ctlr.r? BP_LOGIC_LEVEL: -BP_LOGIC_LEVEL;
 	outputs[BP_OUTPUT_JUMP] = ctlr.u? BP_LOGIC_LEVEL: -BP_LOGIC_LEVEL;
 }
 
@@ -179,8 +183,11 @@ static struct pcontrol _bp_player_read_outputs(numeric outputs[BP_N_OUTPUTS])
 	r.aux = 0;
 	r.d = 0;
 	r.u = (outputs[BP_OUTPUT_JUMP] > 0.0f);
+	r.l = (outputs[BP_OUTPUT_L] < 0.0f);
+	r.r = (outputs[BP_OUTPUT_R] < 0.0f);
 
 	/* This should be ">" instead of "<", but it doesn't work */
+	/*
 	if (outputs[BP_OUTPUT_DIRECTION] < 0.0f) {
 		r.r = 1;
 		r.l = 0;
@@ -188,7 +195,7 @@ static struct pcontrol _bp_player_read_outputs(numeric outputs[BP_N_OUTPUTS])
 		r.l = 1;
 		r.r = 0;
 	}
-
+	*/
 	return r;
 }
 
@@ -220,8 +227,8 @@ void bp_player_train_step(struct game g, int player_number,
 
 #ifdef AI_TRAIN_NN
 
-#define TRAIN_DECIMATION 1
-#define MU .002
+#define TRAIN_DECIMATION 2
+#define MU .008f
 
 static bool running = 1;
 static const int bp_topology[] = {BP_N_INPUTS, 12, BP_N_OUTPUTS};
@@ -254,7 +261,27 @@ int main(int argc, char *argv[])
 		code = -E_NOMEM;
 		goto ai_train_fail_ts;
 	}
+	/*
+	{
+		struct pcontrol pc1 = {.u = 1, .d = 0, .l = 1, .r = 0, .aux = 0};
+		numeric ax[BP_N_OUTPUTS];
 
+		fprintf(stderr, "u: %d; d: %d; l: %d; r: %d; aux: %d\n", pc1.u, pc1.d,
+							pc1.l, pc1.r, pc1.aux);
+
+		_bp_player_load_outputs(pc1, ax);
+
+		fprintf(stderr, "dir: %f; ud:%f\n", ax[BP_OUTPUT_DIRECTION],
+						ax[BP_OUTPUT_JUMP]);
+
+		pc1 = _bp_player_read_outputs(ax);
+
+		fprintf(stderr, "u: %d; d: %d; l: %d; r: %d; aux: %d\n", pc1.u, pc1.d,
+							pc1.l, pc1.r, pc1.aux);
+
+		return;
+	}
+	*/
 	fprintf(stderr, "Start training\n");
 
 	while (running) {

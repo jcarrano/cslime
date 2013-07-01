@@ -38,4 +38,10 @@ enum {E_OK, E_NOMEM, E_BADCFG, E_GRAPHIC, E_DONEHELP, E_BADARGS, E_OTHER,
 typedef int bool;
 #endif
 
+#define GLUE(a,b) GLUE_AGAIN(a,b)
+#define GLUE_AGAIN(a,b) a ## b
+
+#define GLUE3(a,b,c) GLUE_AGAIN3(a,b,c)
+#define GLUE_AGAIN3(a,b,c) a ## b ## c
+
 #endif /* _LIBCOMMON_H_ */
