@@ -81,12 +81,12 @@ _VKW inline struct r_vector r_scale(struct r_vector v, float a)
 
 _VKW inline struct r_vector r_unit(struct r_vector v)
 {
-	return r_scale(v, 1.0 / r_abs(v));
+	return r_scale(v, 1.0f / r_abs(v));
 }
 
 _VKW inline float pmod(float x, float y)
 {
-	return x - y * floor(x / y);
+	return x - y * floorf(x / y);
 }
 
 _VKW inline float r_abs2(struct r_vector v)

@@ -415,7 +415,7 @@ void MLP_train(struct MLP mlp, numeric *v_in, numeric *v_out, int n_vectors,
 #define TRAIN_CYCLES (8000*45*4)
 #define N_EVAL 1000
 
-#define MU 0.002
+#define MU 0.002f
 
 const int layer_sz[] = {1, 10, 10, 2};
 const struct limit tlimit = {-10, 10};
@@ -441,8 +441,10 @@ int main(int argc, char **argv)
 			numeric xy[2];
 			struct matrix in, out;
 
-			xy[0] = .05*(t - sinf(t));
-			xy[1] = .5*(1 - cosf(t)) - 0.5;
+			//xy[0] = .05f*(t - sinf(t));
+			//xy[1] = .5f*(1 - sinf(t)) - 0.5f;
+			xy[0] = (t > 0)? -1: 1;
+			xy[1] = (t > 0)? 1: -1;
 
 			in = a_to_vmatrix(&t, 1);
 			out = a_to_vmatrix(xy, 2);

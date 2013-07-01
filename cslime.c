@@ -335,7 +335,7 @@ static struct kinetic ball_player_collision(struct ball b, struct kinetic k, str
 	incidence = r_to_p(r_subs(b_center, p_center));
 
 	if (incidence.value <= min_dist && incidence.titha <= 0
-						&& incidence.titha >= -M_PI) {
+						&& incidence.titha >= -(float)M_PI) {
 		/* lets reflect the V vector on the axis given by the normal */
 		/*struct r_vector normal = p_to_r(p_make(1, incidence.titha));*/
 		/*new_k = oblique_collision(b.body, k, p.body.vel, normal,
@@ -356,7 +356,7 @@ static struct kinetic ball_player_collision(struct ball b, struct kinetic k, str
 		struct limit edgeangles;
 
 		edge.vel = p.body.vel;
-		if (incidence.titha < M_PI_2) {
+		if (incidence.titha < (float)M_PI_2) {
 			edge.pos = r_sum(p.body.pos, p.body.box);
 			edgeangles = l_make(-M_PI, -M_PI_2);
 		} else {

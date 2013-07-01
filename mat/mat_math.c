@@ -55,7 +55,7 @@ void mat_randFill(struct matrix m, numeric a)
 {
     int i;
     for (i = 0; i < mat_length(m); i++)
-        mat_vset(m, ((numeric)rand()/(numeric)RAND_MAX - .5)*2*a, i);
+        mat_vset(m, ((numeric)rand()/(numeric)RAND_MAX - NUMSUFFIX(.5))*2*a, i);
     return;
 }
 
@@ -153,7 +153,7 @@ int mat_all_leas(struct matrix mat, numeric v)
 {
 	int i, N = mat_length(mat);
 	for (i = 0; i < N; i++) {
-		if (fabs(mat_vget(mat, i)) > v)
+		if (numabs(mat_vget(mat, i)) > v)
 			return 0;
 	}
 	return 1;

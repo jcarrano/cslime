@@ -30,33 +30,33 @@
 
 #define SIMSTEP 10
 #define OVERSAMPLING 16
-#define SAMPLE_FACTOR ((OVERSAMPLING*10.0)/SIMSTEP)
+#define SAMPLE_FACTOR ((OVERSAMPLING*10.0f)/SIMSTEP)
 
-#define GAME_AREA_H .3
-#define PLAYER_AREA_W .363
+#define GAME_AREA_H .3f
+#define PLAYER_AREA_W .363f
 #define PLAYER_AREA_H GAME_AREA_H
-#define NET_W .004
-#define NET_H .038
+#define NET_W .004f
+#define NET_H .038f
 #define AREA2_STARTX (PLAYER_AREA_W + NET_W)
 #define GAME_AREA_W (2*PLAYER_AREA_W + NET_W)
-#define AVATAR_H .035 /*.036*/
+#define AVATAR_H .035f /*.036*/
 #define AVATAR_W (AVATAR_H*2)
 #define AVATAR_MASS 1
 #define BALL_MASS 1
 /*#define BALL_R .00875*/
-#define BALL_R .0104
-#define START_POS_RATIO 0.3925
+#define BALL_R .0104f
+#define START_POS_RATIO 0.3925f
 
-#define START_BALL_Y .1
+#define START_BALL_Y .1f
 
-#define BALL_G (.00013/(SAMPLE_FACTOR*SAMPLE_FACTOR))
-static const struct limit vlimitx = {(.000/SAMPLE_FACTOR), (.0065/SAMPLE_FACTOR)};
-static const struct limit vlimity = {(.000/SAMPLE_FACTOR), (.00515/SAMPLE_FACTOR)};
+#define BALL_G (.000133f/(SAMPLE_FACTOR*SAMPLE_FACTOR))
+static const struct limit vlimitx = {(.000f/SAMPLE_FACTOR), (.0065f/SAMPLE_FACTOR)};
+static const struct limit vlimity = {(.000f/SAMPLE_FACTOR), (.00515f/SAMPLE_FACTOR)};
 #define VISCOUS_DRAG (60)
 #define PLAYER_G (BALL_G*2)
-#define AVATAR_VY (.006/SAMPLE_FACTOR)
-#define AVATAR_VX (((PLAYER_AREA_W)*0.01)/SAMPLE_FACTOR)
-#define AVATAR_AX (.0002/(SAMPLE_FACTOR*SAMPLE_FACTOR))
+#define AVATAR_VY (.006f/SAMPLE_FACTOR)
+#define AVATAR_VX (((PLAYER_AREA_W)*0.01f)/SAMPLE_FACTOR)
+#define AVATAR_AX (.0002f/(SAMPLE_FACTOR*SAMPLE_FACTOR))
 #define FIRE_SPEEDUP 2
 #define BOUNCICITY 2
 #define BOUNCICITY_X 2
@@ -103,7 +103,7 @@ struct commands {
 	bool aux;
 };
 
-#define BODY_CENTER(b) (r_sum((b).pos, r_scale((b).box, .5)))
+#define BODY_CENTER(b) (r_sum((b).pos, r_scale((b).box, .5f)))
 
 void game_reset(struct game *g, int turn);
 struct game game_init(int start_points, int first_turn);

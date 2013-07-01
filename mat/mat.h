@@ -12,6 +12,7 @@
 
 typedef float numeric;
 #define numabs fabsf
+#define NUMSUFFIX(x) GLUE(x, f)
 
 enum {MAT_ROWMODE, MAT_COLMODE};
 
